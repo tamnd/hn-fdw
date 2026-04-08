@@ -425,5 +425,4 @@ exits. From then on it's just `psql -> postgres -> duckdb_fdw -> libduckdb`.
 
 ## License
 
-MIT. See [LICENSE](./LICENSE) if/when one is added; otherwise treat this
-as MIT.
+MIT. See [LICENSE](./LICENSE).
