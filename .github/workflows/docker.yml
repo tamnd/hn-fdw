@@ -1,0 +1,104 @@
+name: Docker
+
+# Verify the image still builds end-to-end whenever the Dockerfile, the
+# compose file, the Python package, or the bootstrap scripts change.
+# Runs the bootstrap SQL generators inside the built image as a quick
+# sanity check; does not try to hit the Hugging Face CDN in CI.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - "docker/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "src/**"
+      - ".github/workflows/docker.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - "docker/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "src/**"
+      - ".github/workflows/docker.yml"
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build once, load into the local daemon, cache layers in the
+      # GitHub Actions cache so subsequent runs skip the 1-2 minute
+      # libduckdb download and the duckdb_fdw compile.
+      - name: Build hn-fdw image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: hn-fdw:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Offline smoke test: the CLI runs inside the image without
+      # touching the network. Confirms that libduckdb, uv, the venv,
+      # and the hn-fdw package are all wired up correctly.
+      - name: Smoke test image (offline)
+        run: |
+          docker run --rm --network=none hn-fdw:ci hn-fdw version
+          docker run --rm --network=none hn-fdw:ci hn-fdw sql duckdb  | head -40
+          docker run --rm --network=none hn-fdw:ci hn-fdw sql postgres | head -40
+
+      # Start the container for real (with network, so the initdb hook
+      # can reach Hugging Face) and wait for Postgres to come up. This
+      # is the closest CI can get to "docker compose up and then psql"
+      # without burning too many minutes.
+      - name: Bring up container and wait for Postgres
+        run: |
+          docker run -d --name hn-fdw-ci \
+            -e POSTGRES_USER=hn -e POSTGRES_PASSWORD=hn -e POSTGRES_DB=hn \
+            hn-fdw:ci
+
+          # Allow generous time for the bootstrap hook to open every
+          # Parquet file in the dataset (it can take 1-2 minutes on a
+          # cold container).
+          for i in $(seq 1 30); do
+            if docker exec hn-fdw-ci pg_isready -U hn -d hn >/dev/null 2>&1; then
+              # pg_isready flips to true *before* the initdb hook has
+              # finished, so also wait for the "[hn-fdw] done" marker
+              # that our own hook prints.
+              if docker logs hn-fdw-ci 2>&1 | grep -q '\[hn-fdw\] done'; then
+                echo "container ready after ${i}0s"
+                exit 0
+              fi
+            fi
+            sleep 10
+          done
+          echo "container did not finish bootstrapping in 300s" >&2
+          docker logs hn-fdw-ci 2>&1 | tail -80
+          exit 1
+
+      - name: Verify foreign tables are registered
+        run: |
+          docker exec hn-fdw-ci psql -U hn -d hn -c '\dET hn.*'
+
+      - name: Tear down
+        if: always()
+        run: |
+          docker rm -f hn-fdw-ci || true

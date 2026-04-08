@@ -40,7 +40,13 @@ def build_duckdb_catalog(settings: Settings) -> Path:
             ).fetchall()
         }
         expected = {
-            "items", "stories", "comments", "jobs", "polls", "poll_options", "live_items",
+            "items",
+            "stories",
+            "comments",
+            "jobs",
+            "polls",
+            "poll_options",
+            "live_items",
         }
         missing = expected - existing
         if missing:

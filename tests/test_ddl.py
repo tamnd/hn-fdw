@@ -24,15 +24,33 @@ def _settings() -> Settings:
 
 def test_item_columns_match_source_schema() -> None:
     expected = {
-        "id", "deleted", "type", "by", "time", "text", "dead", "parent",
-        "poll", "kids", "url", "score", "title", "parts", "descendants", "words",
+        "id",
+        "deleted",
+        "type",
+        "by",
+        "time",
+        "text",
+        "dead",
+        "parent",
+        "poll",
+        "kids",
+        "url",
+        "score",
+        "title",
+        "parts",
+        "descendants",
+        "words",
     }
     assert {c.name for c in ITEM_COLUMNS} == expected
 
 
 def test_type_views_cover_all_item_types() -> None:
     assert {name for name, _, _ in TYPE_VIEWS} == {
-        "stories", "comments", "polls", "poll_options", "jobs",
+        "stories",
+        "comments",
+        "polls",
+        "poll_options",
+        "jobs",
     }
 
 
@@ -62,7 +80,7 @@ def test_postgres_sql_creates_extension_server_and_imports() -> None:
     assert "CREATE SERVER" in sql
     assert "duckdb_fdw" in sql
     assert 'IMPORT FOREIGN SCHEMA "main"' in sql
-    assert "INTO \"hn\"" in sql
+    assert 'INTO "hn"' in sql
     for v in ALL_VIEWS:
         assert v in sql
 

@@ -117,10 +117,7 @@ def bootstrap(
 def check() -> None:
     """Run a tiny smoke query against the foreign tables."""
     s = _settings()
-    sql = (
-        f'SELECT count(*) FROM "{s.schema_name}".stories '
-        f"WHERE time >= now() - interval '1 day'"
-    )
+    sql = f"SELECT count(*) FROM \"{s.schema_name}\".stories WHERE time >= now() - interval '1 day'"
     console.print(f"[dim]{sql}[/dim]")
     with psycopg.connect(s.pg_dsn) as conn, conn.cursor() as cur:
         cur.execute(sql)

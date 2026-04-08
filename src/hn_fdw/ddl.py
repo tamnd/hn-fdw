@@ -27,7 +27,7 @@ ITEM_COLUMNS: tuple[Column, ...] = (
     Column("deleted", 'CAST("deleted" AS SMALLINT)', "1 if soft-deleted, else 0."),
     Column("type", 'CAST("type" AS SMALLINT)', "1 story, 2 comment, 3 poll, 4 pollopt, 5 job."),
     Column("by", '"by"', "Author username."),
-    Column("time", '("time" AT TIME ZONE \'UTC\')', "Creation time, UTC."),
+    Column("time", "(\"time\" AT TIME ZONE 'UTC')", "Creation time, UTC."),
     Column("text", '"text"', "HTML body text."),
     Column("dead", 'CAST("dead" AS SMALLINT)', "1 if killed/flagged, else 0."),
     Column("parent", 'CAST("parent" AS BIGINT)', "Parent item id (for comments)."),
@@ -66,7 +66,7 @@ ALL_VIEWS: tuple[str, ...] = (
 def duckdb_bootstrap_sql(settings: Settings) -> str:
     """Return the full DuckDB script that builds the catalog file."""
 
-    select_list = ",\n        ".join(f"{c.duckdb_expr} AS \"{c.name}\"" for c in ITEM_COLUMNS)
+    select_list = ",\n        ".join(f'{c.duckdb_expr} AS "{c.name}"' for c in ITEM_COLUMNS)
 
     parts: list[str] = []
 
@@ -90,9 +90,7 @@ FROM read_parquet(
     )
 
     for name, where, _comment in TYPE_VIEWS:
-        parts.append(
-            f"CREATE OR REPLACE VIEW {name} AS SELECT * FROM items WHERE {where};"
-        )
+        parts.append(f"CREATE OR REPLACE VIEW {name} AS SELECT * FROM items WHERE {where};")
 
     parts.append(
         f"""
