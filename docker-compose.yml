@@ -1,0 +1,38 @@
+# One service. Brings up Postgres 16 with the duckdb_fdw extension and the
+# hn schema preloaded with foreign tables that read straight from Hugging
+# Face. No second container, no migrations, no ETL job.
+#
+# Usage:
+#   docker compose up -d
+#   psql postgresql://hn:hn@localhost:5432/hn -c 'select count(*) from hn.stories'
+#
+
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hn-fdw:latest
+    container_name: hn-fdw
+    environment:
+      POSTGRES_USER: hn
+      POSTGRES_PASSWORD: hn
+      POSTGRES_DB: hn
+      # Pin a dataset revision here for reproducible reads. Default = main.
+      HN_FDW_HF_REVISION: main
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - duckdb:/var/lib/postgresql/duckdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hn -d hn"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  duckdb:
