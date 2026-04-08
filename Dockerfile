@@ -24,9 +24,10 @@ ARG DUCKDB_FDW_REF=870bc4366b
 # "aarch64" filename; DuckDB renamed it to "arm64"), so the builder
 # fetches the zip directly with the names DuckDB actually publishes.
 ARG DUCKDB_VERSION=v1.4.1
-# uv handles both the Python runtime and the package install. Debian
-# bookworm ships Python 3.11, which is below our requires-python, so we
-# let uv download the pinned CPython build instead of using apt.
+# uv handles both the Python runtime and the package install. We let it
+# fetch its own pinned CPython build rather than relying on whatever
+# python3 the base image's distro happens to ship, so bumping PYTHON_VERSION
+# here is the single source of truth.
 ARG UV_VERSION=0.11.4
 ARG PYTHON_VERSION=3.13
 
@@ -111,9 +112,9 @@ RUN echo /usr/local/lib > /etc/ld.so.conf.d/duckdb.conf && ldconfig
 # uv (single static binary, no Python deps).
 RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" | env UV_INSTALL_DIR=/usr/local/bin sh
 
-# Have uv manage the Python runtime too. Debian bookworm only ships 3.11,
-# which is below this project's requires-python, so we ask uv to fetch a
-# matching CPython once and cache it under /opt/uv-python.
+# Have uv manage the Python runtime too. Whatever python3 the base image
+# ships is ignored; uv fetches an exact CPython build (PYTHON_VERSION)
+# once and caches it under /opt/uv-python so the venv is reproducible.
 ENV UV_PYTHON_INSTALL_DIR=/opt/uv-python
 RUN uv python install "${PYTHON_VERSION}"
 

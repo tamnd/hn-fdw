@@ -1,4 +1,4 @@
-# One service. Brings up Postgres 16 with the duckdb_fdw extension and the
+# One service. Brings up Postgres 18 with the duckdb_fdw extension and the
 # hn schema preloaded with foreign tables that read straight from Hugging
 # Face. No second container, no migrations, no ETL job.
 #

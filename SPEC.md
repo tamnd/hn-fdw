@@ -119,13 +119,16 @@ predicate pushdown reaches Parquet row-group statistics.
 
 ### 7.1 Postgres image
 
-A Dockerfile based on `postgres:18-bookworm` that builds `duckdb_fdw`
-against the matching `libduckdb.so`. Build artefacts are copied into the
-final stage; the runtime image carries only `libduckdb.so` and the
-extension's shared object.
+A Dockerfile based on `postgres:18-trixie` (Debian 13) that builds
+`duckdb_fdw` against the matching `libduckdb.so` (pinned to v1.4.1,
+which is what the FDW's C++ source expects). Build artefacts are
+copied into the final stage; the runtime image carries only
+`libduckdb.so` and the extension's shared object.
 
-The image also installs Python 3.13 and `uv`, then installs the `hn-fdw`
-package itself, so the bootstrap CLI is available inside the container.
+The image also uses `uv` to fetch its own CPython 3.13 runtime (so the
+base image's system Python is irrelevant) and then installs the
+`hn-fdw` package itself, so the bootstrap CLI is available inside the
+container.
 
 ### 7.2 Python package: `hn_fdw`
 
